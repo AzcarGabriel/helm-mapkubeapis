@@ -13,6 +13,7 @@ require (
 	github.com/spf13/cobra v0.0.5
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/mod v0.3.0
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	helm.sh/helm/v3 v3.1.2
 	k8s.io/helm v2.16.6+incompatible
 	sigs.k8s.io/yaml v1.1.0

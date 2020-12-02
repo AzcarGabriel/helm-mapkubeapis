@@ -17,7 +17,10 @@ limitations under the License.
 package common
 
 import (
+	"fmt"
+	"gopkg.in/yaml.v2"
 	"log"
+	"regexp"
 	"strings"
 
 	utils "github.com/maorfr/helm-plugin-utils/pkg"
@@ -44,6 +47,108 @@ type MapOptions struct {
 	TillerOutCluster bool
 }
 
+// Yaml del manifiesto
+type ManifestYaml struct {
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name   string `yaml:"name"`
+		Labels struct {
+			App      string `yaml:"app"`
+			Track    string `yaml:"track"`
+			Tier     string `yaml:"tier"`
+			Chart    string `yaml:"chart"`
+			Release  string `yaml:"release"`
+			Heritage string `yaml:"heritage"`
+		} `yaml:"labels"`
+	} `yaml:"metadata"`
+	Spec struct {
+		Replicas int `yaml:"replicas"`
+		Selector struct {
+			MatchLabels struct {
+				App      string `yaml:"app"`
+				Track    string `yaml:"track"`
+				Tier     string `yaml:"tier"`
+				Chart    string `yaml:"chart"`
+				Release  string `yaml:"release"`
+				Heritage string `yaml:"heritage"`
+			} `yaml:"matchLabels"`
+		} `yaml:"selector"`
+		Template struct {
+			Metadata struct {
+				Labels struct {
+					App      string `yaml:"app"`
+					Track    string `yaml:"track"`
+					Tier     string `yaml:"tier"`
+					Chart    string `yaml:"chart"`
+					Release  string `yaml:"release"`
+					Heritage string `yaml:"heritage"`
+				} `yaml:"labels"`
+			} `yaml:"metadata"`
+			Spec struct {
+				ImagePullSecrets []struct {
+					Name string `yaml:"name"`
+				} `yaml:"imagePullSecrets"`
+				Containers []struct {
+					Name            string `yaml:"name"`
+					Image           string `yaml:"image"`
+					ImagePullPolicy string `yaml:"imagePullPolicy"`
+					Env             []struct {
+						Name      string      `yaml:"name"`
+						Value     interface{} `yaml:"value,omitempty"`
+						ValueFrom struct {
+							ConfigMapKeyRef struct {
+								Name string `yaml:"name"`
+								Key  string `yaml:"key"`
+							} `yaml:"configMapKeyRef"`
+						} `yaml:"valueFrom,omitempty"`
+					} `yaml:"env"`
+					Ports []struct {
+						Name          string `yaml:"name"`
+						ContainerPort int    `yaml:"containerPort"`
+					} `yaml:"ports"`
+					LivenessProbe struct {
+						HTTPGet struct {
+							Path string `yaml:"path"`
+							Port int    `yaml:"port"`
+						} `yaml:"httpGet"`
+						InitialDelaySeconds int `yaml:"initialDelaySeconds"`
+						TimeoutSeconds      int `yaml:"timeoutSeconds"`
+					} `yaml:"livenessProbe"`
+					ReadinessProbe struct {
+						HTTPGet struct {
+							Path string `yaml:"path"`
+							Port int    `yaml:"port"`
+						} `yaml:"httpGet"`
+						InitialDelaySeconds int `yaml:"initialDelaySeconds"`
+						TimeoutSeconds      int `yaml:"timeoutSeconds"`
+					} `yaml:"readinessProbe"`
+					VolumeMounts []struct {
+						Name      string `yaml:"name"`
+						MountPath string `yaml:"mountPath"`
+						ReadOnly  bool   `yaml:"readOnly"`
+					} `yaml:"volumeMounts"`
+					Resources struct {
+						Requests struct {
+							CPU    string `yaml:"cpu"`
+							Memory string `yaml:"memory"`
+						} `yaml:"requests"`
+					} `yaml:"resources"`
+				} `yaml:"containers"`
+				Volumes []struct {
+					Name   string `yaml:"name"`
+					Secret struct {
+						SecretName string `yaml:"secretName"`
+					} `yaml:"secret,omitempty"`
+					ConfigMap struct {
+						Name string `yaml:"name"`
+					} `yaml:"configMap,omitempty"`
+				} `yaml:"volumes"`
+			} `yaml:"spec"`
+		} `yaml:"template"`
+	} `yaml:"spec"`
+}
+
 // UpgradeDescription is description of why release was upgraded
 const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback from this version"
 
@@ -51,6 +156,7 @@ const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback 
 // Kubernetes APIs updated to supported APIs
 func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig KubeConfig) (string, error) {
 	var modifiedManifest = origManifest
+	var modifiedManifestDummy = origManifest
 	var err error
 	var mapMetadata *mapping.Metadata
 
@@ -83,7 +189,15 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		}
 
 		var modManifestForAPI string
+		var modManifestForAPIDummy string
 		var modified = false
+
+		// STARTNET TEST
+		var re = regexp.MustCompile(deprecatedAPI)
+		modManifestForAPIDummy = re.ReplaceAllString(modifiedManifestDummy, supportedAPI)
+		modifiedManifestDummy = modManifestForAPIDummy
+		// STARTNET TEST
+
 		modManifestForAPI = strings.ReplaceAll(modifiedManifest, deprecatedAPI, supportedAPI)
 		if modManifestForAPI != modifiedManifest {
 			modified = true
@@ -99,6 +213,24 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			}
 		}
 	}
+
+	// STARTNET TEST
+	var manifestYaml ManifestYaml
+	err = yaml.Unmarshal([]byte(modifiedManifest), &manifestYaml)
+	if err != nil {
+		fmt.Printf("Error parsing YAML file: %s\n", err)
+	}
+	manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Metadata.Labels
+	manifestYaml.Spec.Template.Metadata.Labels = manifestYaml.Metadata.Labels
+
+	// Regreso a string
+	modManifest, err := yaml.Marshal(&manifestYaml)
+	if err != nil {
+		log.Fatalf("error: %v", err)
+	}
+	fmt.Printf("%s\n", modManifest)
+	// modifiedManifest = string(modManifest)
+	// STARTNET TEST
 
 	return modifiedManifest, nil
 }
