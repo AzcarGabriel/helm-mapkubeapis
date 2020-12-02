@@ -17,7 +17,6 @@ limitations under the License.
 package common
 
 import (
-	"fmt"
 	"gopkg.in/yaml.v2"
 	"log"
 	"regexp"
@@ -218,7 +217,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	var manifestYaml ManifestYaml
 	err = yaml.Unmarshal([]byte(modifiedManifest), &manifestYaml)
 	if err != nil {
-		fmt.Printf("Error parsing YAML file: %s\n", err)
+		log.Printf("Error parsing YAML file: %s\n", err)
 	}
 	manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Metadata.Labels
 	manifestYaml.Spec.Template.Metadata.Labels = manifestYaml.Metadata.Labels
@@ -228,7 +227,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	if err != nil {
 		log.Fatalf("error: %v", err)
 	}
-	fmt.Printf("%s\n", modManifest)
+	log.Printf("%s\n", modManifest)
 	// modifiedManifest = string(modManifest)
 	// STARTNET TEST
 
