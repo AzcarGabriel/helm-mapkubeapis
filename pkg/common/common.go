@@ -52,37 +52,16 @@ type ManifestYaml struct {
 	Kind       string `yaml:"kind"`
 	Metadata   struct {
 		Name   string `yaml:"name"`
-		Labels struct {
-			App      string `yaml:"app"`
-			Track    string `yaml:"track"`
-			Tier     string `yaml:"tier"`
-			Chart    string `yaml:"chart"`
-			Release  string `yaml:"release"`
-			Heritage string `yaml:"heritage"`
-		} `yaml:"labels"`
+		Labels Labels
 	} `yaml:"metadata"`
 	Spec struct {
 		Replicas int `yaml:"replicas"`
 		Selector struct {
-			MatchLabels struct {
-				App      string `yaml:"app"`
-				Track    string `yaml:"track"`
-				Tier     string `yaml:"tier"`
-				Chart    string `yaml:"chart"`
-				Release  string `yaml:"release"`
-				Heritage string `yaml:"heritage"`
-			} `yaml:"matchLabels"`
+			MatchLabels Labels
 		} `yaml:"selector"`
 		Template struct {
 			Metadata struct {
-				Labels struct {
-					App      string `yaml:"app"`
-					Track    string `yaml:"track"`
-					Tier     string `yaml:"tier"`
-					Chart    string `yaml:"chart"`
-					Release  string `yaml:"release"`
-					Heritage string `yaml:"heritage"`
-				} `yaml:"labels"`
+				Labels Labels
 			} `yaml:"metadata"`
 			Spec struct {
 				ImagePullSecrets []struct {
@@ -146,6 +125,15 @@ type ManifestYaml struct {
 			} `yaml:"spec"`
 		} `yaml:"template"`
 	} `yaml:"spec"`
+}
+
+type Labels struct {
+	App      string `yaml:"app"`
+	Track    string `yaml:"track"`
+	Tier     string `yaml:"tier"`
+	Chart    string `yaml:"chart"`
+	Release  string `yaml:"release"`
+	Heritage string `yaml:"heritage"`
 }
 
 // UpgradeDescription is description of why release was upgraded
@@ -218,6 +206,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	// STARTNET TEST
 	finalManifest := ""
 	parts := strings.Split(modifiedManifestDummy, "---")
+	var labels = constructLabels(modifiedManifestDummy)
 	for _, s := range parts {
 		var yamlConfig ManifestYaml
 		err := yaml.Unmarshal([]byte(s), &yamlConfig)
@@ -231,8 +220,9 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			if err != nil {
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
-			manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Metadata.Labels
-			manifestYaml.Spec.Template.Metadata.Labels = manifestYaml.Metadata.Labels
+			manifestYaml.Metadata.Labels = labels
+			manifestYaml.Spec.Selector.MatchLabels = labels
+			manifestYaml.Spec.Template.Metadata.Labels = labels
 
 			yamlString, err := yaml.Marshal(&manifestYaml)
 			if err != nil {
@@ -260,4 +250,43 @@ func getKubernetesServerVersion(kubeConfig KubeConfig) (string, error) {
 		return "", errors.Wrap(err, "kubernetes cluster unreachable")
 	}
 	return kubeVersion.GitVersion, nil
+}
+
+func constructLabels(manifest string) Labels {
+	// Variables
+	parts := strings.Split(manifest, "---")
+	var labels Labels
+	labels.Tier = "web"
+	labels.Track = "stable"
+	labels.Heritage = "Tiller"
+
+	// Revision
+	for _, s := range parts {
+		var yamlConfig ManifestYaml
+		err := yaml.Unmarshal([]byte(s), &yamlConfig)
+		if err != nil {
+			log.Printf("Error parsing YAML file: %s\n", err)
+		}
+
+		if yamlConfig.Kind == "Deployment" {
+			var manifestYaml ManifestYaml
+			err = yaml.Unmarshal([]byte(s), &manifestYaml)
+			if err != nil {
+				log.Printf("Error parsing YAML file: %s\n", err)
+			}
+
+			// Relleno de labels
+			if labels.App == "" {
+				labels.App = manifestYaml.Metadata.Labels.App
+			}
+			if labels.Chart == "" {
+				labels.Chart = manifestYaml.Metadata.Labels.Chart
+			}
+			if labels.Release == "" {
+				labels.Release = manifestYaml.Metadata.Labels.Release
+			}
+		}
+	}
+
+	return labels
 }
