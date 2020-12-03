@@ -221,11 +221,9 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
-			finalManifest += "---\n"
-			finalManifest += string(yamlString)
+			finalManifest += "---\n" + string(yamlString)
 		} else {
-			finalManifest += "---"
-			finalManifest += s
+			finalManifest += "---" + s
 		}
 	}
 	log.Printf(finalManifest)
