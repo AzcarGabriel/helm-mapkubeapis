@@ -224,7 +224,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			finalManifest += s
 		}
 	}
-
+	log.Printf(finalManifest)
 	return finalManifest, nil
 }
 
