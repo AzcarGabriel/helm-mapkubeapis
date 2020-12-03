@@ -155,14 +155,8 @@ const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback 
 // Kubernetes APIs updated to supported APIs
 func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig KubeConfig) (string, error) {
 	var modifiedManifest = origManifest
-
 	// STARTNET TEST
 	var modifiedManifestDummy = origManifest
-	var origManifestYaml ManifestYaml
-	res := yaml.Unmarshal([]byte(origManifest), &origManifestYaml)
-	if res != nil {
-		log.Printf("Error parsing YAML file: %s\n", res)
-	}
 
 	var err error
 	var mapMetadata *mapping.Metadata
@@ -200,12 +194,10 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		var modified = false
 
 		// STARTNET TEST
-		if origManifestYaml.Kind == "Deployment" {
-			var re = regexp.MustCompile(deprecatedAPI)
-			modManifestForAPIDummy = re.ReplaceAllString(modifiedManifestDummy, supportedAPI)
-			modifiedManifestDummy = modManifestForAPIDummy
-			// STARTNET TEST
-		}
+		var re = regexp.MustCompile(deprecatedAPI)
+		modManifestForAPIDummy = re.ReplaceAllString(modifiedManifestDummy, supportedAPI)
+		modifiedManifestDummy = modManifestForAPIDummy
+		// STARTNET TEST
 
 		modManifestForAPI = strings.ReplaceAll(modifiedManifest, deprecatedAPI, supportedAPI)
 		if modManifestForAPI != modifiedManifest {
@@ -224,23 +216,35 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	}
 
 	// STARTNET TEST
-	if origManifestYaml.Kind == "Deployment" {
-		var manifestYaml ManifestYaml
-		err = yaml.Unmarshal([]byte(modifiedManifest), &manifestYaml)
+	finalManifest := ""
+	parts := strings.Split(modifiedManifest, "---")
+	for _, s := range parts {
+		var yamlConfig ManifestYaml
+		err := yaml.Unmarshal([]byte(s), &yamlConfig)
 		if err != nil {
 			log.Printf("Error parsing YAML file: %s\n", err)
 		}
-		manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Metadata.Labels
-		manifestYaml.Spec.Template.Metadata.Labels = manifestYaml.Metadata.Labels
 
-		// Regreso a string
-		modManifest, err := yaml.Marshal(&manifestYaml)
-		if err != nil {
-			log.Fatalf("error: %v", err)
+		if yamlConfig.Kind == "Deployment" && yamlConfig.Metadata.Name == "testing" {
+			var manifestYaml ManifestYaml
+			err = yaml.Unmarshal([]byte(s), &manifestYaml)
+			if err != nil {
+				log.Printf("Error parsing YAML file: %s\n", err)
+			}
+			manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Metadata.Labels
+			manifestYaml.Spec.Template.Metadata.Labels = manifestYaml.Metadata.Labels
+
+			yamlString, err := yaml.Marshal(&manifestYaml)
+			if err != nil {
+				log.Fatalf("error: %v", err)
+			}
+			finalManifest += string(yamlString)
+		} else {
+			finalManifest += s
 		}
-		log.Printf("%s\n", modManifest)
-		// modifiedManifest = string(modManifest)
 	}
+	log.Printf("%s\n", finalManifest)
+	// modifiedManifest = ans
 	// STARTNET TEST
 
 	return modifiedManifest, nil
