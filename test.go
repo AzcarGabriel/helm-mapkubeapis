@@ -91,7 +91,9 @@ type Labels struct {
 	App      string `yaml:"app"`
 	Track    string `yaml:"track"`
 	Tier     string `yaml:"tier"`
-	Chart    string `yaml:"chart"`
+	// Chart    string `yaml:"chart"`
+	Release  string `yaml:"release"`
+	// Heritage string `yaml:"heritage"`
 }
 
 func main() {
@@ -162,12 +164,12 @@ func constructLabels(manifest string) Labels {
 			if labels.App == "" {
 				labels.App = manifestYaml.Metadata.Labels.App
 			}
-			if labels.Chart == "" {
+			/* if labels.Chart == "" {
 				labels.Chart = manifestYaml.Metadata.Labels.Chart
-			}
-			/* if labels.Release == "" {
+			} */
+			if labels.Release == "" {
 				labels.Release = manifestYaml.Metadata.Labels.Release
-			}*/
+			}
 		}
 	}
 
