@@ -126,8 +126,10 @@ func main() {
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
+			finalManifest += "---\n"
 			finalManifest += string(yamlString)
 		} else {
+			finalManifest += "---"
 			finalManifest += s
 		}
 	}

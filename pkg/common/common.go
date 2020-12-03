@@ -177,6 +177,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		var modManifestForAPI string
 		var modified = false
 
+		// Replace using regex
 		var re = regexp.MustCompile(deprecatedAPI)
 		modManifestForAPI = re.ReplaceAllString(modifiedManifest, supportedAPI)
 
@@ -195,6 +196,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		}
 	}
 
+	// Add labels variables
 	finalManifest := ""
 	parts := strings.Split(modifiedManifest, "---")
 	var labels = constructLabels(modifiedManifest)
@@ -219,8 +221,10 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
+			finalManifest += "---\n"
 			finalManifest += string(yamlString)
 		} else {
+			finalManifest += "---"
 			finalManifest += s
 		}
 	}
@@ -240,6 +244,7 @@ func getKubernetesServerVersion(kubeConfig KubeConfig) (string, error) {
 	return kubeVersion.GitVersion, nil
 }
 
+// constructLabels returns labels variables for Deployment kind
 func constructLabels(manifest string) Labels {
 	// Variables
 	parts := strings.Split(manifest, "---")
