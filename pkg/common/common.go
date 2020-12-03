@@ -217,7 +217,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 
 	// STARTNET TEST
 	finalManifest := ""
-	parts := strings.Split(modifiedManifest, "---")
+	parts := strings.Split(modifiedManifestDummy, "---")
 	for _, s := range parts {
 		var yamlConfig ManifestYaml
 		err := yaml.Unmarshal([]byte(s), &yamlConfig)
