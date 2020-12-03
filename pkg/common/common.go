@@ -225,7 +225,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			log.Printf("Error parsing YAML file: %s\n", err)
 		}
 
-		if yamlConfig.Kind == "Deployment" && yamlConfig.Metadata.Name == "testing" {
+		if yamlConfig.Kind == "Deployment" {
 			var manifestYaml ManifestYaml
 			err = yaml.Unmarshal([]byte(s), &manifestYaml)
 			if err != nil {
