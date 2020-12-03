@@ -197,10 +197,15 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	}
 
 	// Add labels variables
+	modifiedManifest = strings.Replace(modifiedManifest, "apiVersion:", "---\napiVersion:", -1)
 	finalManifest := ""
 	parts := strings.Split(modifiedManifest, "---")
 	var labels = constructLabels(modifiedManifest)
 	for _, s := range parts {
+		if !strings.Contains(s, "apiVersion") {
+			continue
+		}
+
 		var yamlConfig ManifestYaml
 		err := yaml.Unmarshal([]byte(s), &yamlConfig)
 		if err != nil {
