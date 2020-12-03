@@ -143,9 +143,6 @@ const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback 
 // Kubernetes APIs updated to supported APIs
 func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig KubeConfig) (string, error) {
 	var modifiedManifest = origManifest
-	// STARTNET TEST
-	var modifiedManifestDummy = origManifest
-
 	var err error
 	var mapMetadata *mapping.Metadata
 
@@ -178,16 +175,11 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		}
 
 		var modManifestForAPI string
-		var modManifestForAPIDummy string
 		var modified = false
 
-		// STARTNET TEST
 		var re = regexp.MustCompile(deprecatedAPI)
-		modManifestForAPIDummy = re.ReplaceAllString(modifiedManifestDummy, supportedAPI)
-		modifiedManifestDummy = modManifestForAPIDummy
-		// STARTNET TEST
+		modManifestForAPI = re.ReplaceAllString(modifiedManifest, supportedAPI)
 
-		modManifestForAPI = strings.ReplaceAll(modifiedManifest, deprecatedAPI, supportedAPI)
 		if modManifestForAPI != modifiedManifest {
 			modified = true
 			log.Printf("Found deprecated or removed Kubernetes API:\n\"%s\"\nSupported API equivalent:\n\"%s\"\n", deprecatedAPI, supportedAPI)
@@ -203,10 +195,9 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		}
 	}
 
-	// STARTNET TEST
 	finalManifest := ""
-	parts := strings.Split(modifiedManifestDummy, "---")
-	var labels = constructLabels(modifiedManifestDummy)
+	parts := strings.Split(modifiedManifest, "---")
+	var labels = constructLabels(modifiedManifest)
 	for _, s := range parts {
 		var yamlConfig ManifestYaml
 		err := yaml.Unmarshal([]byte(s), &yamlConfig)
@@ -233,11 +224,8 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			finalManifest += s
 		}
 	}
-	log.Printf("%s\n", finalManifest)
-	// modifiedManifest = ans
-	// STARTNET TEST
 
-	return modifiedManifest, nil
+	return finalManifest, nil
 }
 
 func getKubernetesServerVersion(kubeConfig KubeConfig) (string, error) {
