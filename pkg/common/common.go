@@ -128,11 +128,11 @@ type ManifestYaml struct {
 }
 
 type Labels struct {
-	App      string `yaml:"app"`
-	Track    string `yaml:"track"`
-	Tier     string `yaml:"tier"`
+	App      string `yaml:"app,omitempty"`
+	Track    string `yaml:"track,omitempty"`
+	Tier     string `yaml:"tier,omitempty"`
 	// Chart    string `yaml:"chart"`
-	Release  string `yaml:"release"`
+	Release  string `yaml:"release,omitempty"`
 	// Heritage string `yaml:"heritage"`
 }
 
@@ -200,11 +200,12 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	finalManifest := ""
 	parts := strings.Split(modifiedManifest, "---")
 	var labels = constructLabels(modifiedManifest)
+
+	// Revision
 	for _, s := range parts {
 		if !strings.Contains(s, "apiVersion") {
 			continue
 		}
-
 		var yamlConfig ManifestYaml
 		err := yaml.Unmarshal([]byte(s), &yamlConfig)
 		if err != nil {
@@ -217,9 +218,19 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			if err != nil {
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
-			manifestYaml.Metadata.Labels = labels
-			manifestYaml.Spec.Selector.MatchLabels = labels
-			manifestYaml.Spec.Template.Metadata.Labels = labels
+
+			if yamlConfig.Metadata.Name == "testing" {
+				manifestYaml.Metadata.Labels = labels
+				manifestYaml.Spec.Selector.MatchLabels = labels
+				manifestYaml.Spec.Template.Metadata.Labels = labels
+			} else {
+				partialLabels := Labels{
+					App:     labels.App,
+				}
+				manifestYaml.Metadata.Labels = partialLabels
+				manifestYaml.Spec.Selector.MatchLabels = partialLabels
+				manifestYaml.Spec.Template.Metadata.Labels = partialLabels
+			}
 
 			yamlString, err := yaml.Marshal(&manifestYaml)
 			if err != nil {
@@ -230,7 +241,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			finalManifest += "---" + s
 		}
 	}
-	log.Printf(finalManifest)
+	log.Printf("%s\n", finalManifest)
 	return finalManifest, nil
 }
 
