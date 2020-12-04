@@ -131,9 +131,9 @@ type Labels struct {
 	App      string `yaml:"app,omitempty"`
 	Track    string `yaml:"track,omitempty"`
 	Tier     string `yaml:"tier,omitempty"`
-	// Chart    string `yaml:"chart"`
+	Chart    string `yaml:"chart,omitempty"`
 	Release  string `yaml:"release,omitempty"`
-	// Heritage string `yaml:"heritage"`
+	Heritage string `yaml:"heritage,omitempty"`
 }
 
 // UpgradeDescription is description of why release was upgraded
@@ -199,7 +199,6 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 	// Add labels variables
 	finalManifest := ""
 	parts := strings.Split(modifiedManifest, "---")
-	var labels = constructLabels(modifiedManifest)
 
 	// Revision
 	for _, s := range parts {
@@ -218,19 +217,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 			if err != nil {
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
-
-			if yamlConfig.Metadata.Name == "testing" {
-				manifestYaml.Metadata.Labels = labels
-				manifestYaml.Spec.Selector.MatchLabels = labels
-				manifestYaml.Spec.Template.Metadata.Labels = labels
-			} else {
-				partialLabels := Labels{
-					App:     labels.App,
-				}
-				manifestYaml.Metadata.Labels = partialLabels
-				manifestYaml.Spec.Selector.MatchLabels = partialLabels
-				manifestYaml.Spec.Template.Metadata.Labels = partialLabels
-			}
+			manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Spec.Template.Metadata.Labels
 
 			yamlString, err := yaml.Marshal(&manifestYaml)
 			if err != nil {
@@ -255,44 +242,4 @@ func getKubernetesServerVersion(kubeConfig KubeConfig) (string, error) {
 		return "", errors.Wrap(err, "kubernetes cluster unreachable")
 	}
 	return kubeVersion.GitVersion, nil
-}
-
-// constructLabels returns labels variables for Deployment kind
-func constructLabels(manifest string) Labels {
-	// Variables
-	parts := strings.Split(manifest, "---")
-	var labels Labels
-	labels.Tier = "web"
-	labels.Track = "stable"
-	// labels.Heritage = "Tiller"
-
-	// Revision
-	for _, s := range parts {
-		var yamlConfig ManifestYaml
-		err := yaml.Unmarshal([]byte(s), &yamlConfig)
-		if err != nil {
-			log.Printf("Error parsing YAML file: %s\n", err)
-		}
-
-		if yamlConfig.Kind == "Deployment" {
-			var manifestYaml ManifestYaml
-			err = yaml.Unmarshal([]byte(s), &manifestYaml)
-			if err != nil {
-				log.Printf("Error parsing YAML file: %s\n", err)
-			}
-
-			// Relleno de labels
-			if labels.App == "" {
-				labels.App = manifestYaml.Metadata.Labels.App
-			}
-			/* if labels.Chart == "" {
-				labels.Chart = manifestYaml.Metadata.Labels.Chart
-			} */
-			if labels.Release == "" {
-				labels.Release = manifestYaml.Metadata.Labels.Release
-			}
-		}
-	}
-
-	return labels
 }
