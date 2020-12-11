@@ -96,7 +96,6 @@ type Labels struct {
 	Tier     string `yaml:"tier,omitempty"`
 	Chart    string `yaml:"chart,omitempty"`
 	Release  string `yaml:"release,omitempty"`
-	Heritage string `yaml:"heritage,omitempty"`
 }
 
 func main() {
