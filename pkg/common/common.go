@@ -47,87 +47,6 @@ type MapOptions struct {
 }
 
 // Yaml del manifiesto
-type ManifestYaml struct {
-	APIVersion string `yaml:"apiVersion"`
-	Kind       string `yaml:"kind"`
-	Metadata   struct {
-		Name   string `yaml:"name"`
-		Labels Labels
-		Annotations `yaml:"annotations,omitempty"`
-	} `yaml:"metadata"`
-	Spec struct {
-		Replicas int `yaml:"replicas"`
-		Selector struct {
-			MatchLabels Labels
-		} `yaml:"selector"`
-		Template struct {
-			Metadata struct {
-				Labels Labels
-			} `yaml:"metadata"`
-			Spec struct {
-				ImagePullSecrets []struct {
-					Name string `yaml:"name"`
-				} `yaml:"imagePullSecrets"`
-				Containers []struct {
-					Name            string `yaml:"name"`
-					Image           string `yaml:"image"`
-					ImagePullPolicy string `yaml:"imagePullPolicy"`
-					Env             []struct {
-						Name      string      `yaml:"name"`
-						Value     interface{} `yaml:"value,omitempty"`
-						ValueFrom struct {
-							ConfigMapKeyRef struct {
-								Name string `yaml:"name"`
-								Key  string `yaml:"key"`
-							} `yaml:"configMapKeyRef"`
-						} `yaml:"valueFrom,omitempty"`
-					} `yaml:"env"`
-					Ports []struct {
-						Name          string `yaml:"name"`
-						ContainerPort int    `yaml:"containerPort"`
-					} `yaml:"ports"`
-					LivenessProbe struct {
-						HTTPGet struct {
-							Path string `yaml:"path"`
-							Port int    `yaml:"port"`
-						} `yaml:"httpGet"`
-						InitialDelaySeconds int `yaml:"initialDelaySeconds"`
-						TimeoutSeconds      int `yaml:"timeoutSeconds"`
-					} `yaml:"livenessProbe"`
-					ReadinessProbe struct {
-						HTTPGet struct {
-							Path string `yaml:"path"`
-							Port int    `yaml:"port"`
-						} `yaml:"httpGet"`
-						InitialDelaySeconds int `yaml:"initialDelaySeconds"`
-						TimeoutSeconds      int `yaml:"timeoutSeconds"`
-					} `yaml:"readinessProbe"`
-					VolumeMounts []struct {
-						Name      string `yaml:"name"`
-						MountPath string `yaml:"mountPath"`
-						ReadOnly  bool   `yaml:"readOnly"`
-					} `yaml:"volumeMounts"`
-					Resources struct {
-						Requests struct {
-							CPU    string `yaml:"cpu"`
-							Memory string `yaml:"memory"`
-						} `yaml:"requests"`
-					} `yaml:"resources"`
-				} `yaml:"containers"`
-				Volumes []struct {
-					Name   string `yaml:"name"`
-					Secret struct {
-						SecretName string `yaml:"secretName"`
-					} `yaml:"secret,omitempty"`
-					ConfigMap struct {
-						Name string `yaml:"name"`
-					} `yaml:"configMap,omitempty"`
-				} `yaml:"volumes"`
-			} `yaml:"spec"`
-		} `yaml:"template"`
-	} `yaml:"spec"`
-}
-
 type DeploymentYaml struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
@@ -226,6 +145,7 @@ type IngressYaml struct {
 			Chart    string `yaml:"chart"`
 			Release  string `yaml:"release"`
 			Heritage string `yaml:"heritage"`
+			AppKubernetesIoManagedBy string `yaml:"app.kubernetes.io/managed-by,omitempty"`
 		} `yaml:"labels"`
 		Annotations `yaml:"annotations,omitempty"`
 	} `yaml:"metadata"`
@@ -253,7 +173,6 @@ type Annotations struct {
 	KubernetesIoTLSAcme                   string `yaml:"kubernetes.io/tls-acme,omitempty"`
 	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
 	NginxIngressKubernetesIoProxyBodySize string `yaml:"nginx.ingress.kubernetes.io/proxy-body-size,omitempty"`
-	AppKubernetesIoManagedBy              string `yaml:"app.kubernetes.io/managed-by,omitempty"`
 	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
 }
 
@@ -347,7 +266,7 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
 
-			ingressYaml.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
+			ingressYaml.Metadata.Labels.AppKubernetesIoManagedBy = "Helm"
 			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = ingressYaml.Metadata.Labels.Release
 
 			yamlString, err := yaml.Marshal(&ingressYaml)

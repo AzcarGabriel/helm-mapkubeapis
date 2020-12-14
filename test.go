@@ -10,6 +10,7 @@ import (
 	"strings"
 )
 
+// Yaml del manifiesto
 type DeploymentYaml struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
@@ -108,6 +109,7 @@ type IngressYaml struct {
 			Chart    string `yaml:"chart"`
 			Release  string `yaml:"release"`
 			Heritage string `yaml:"heritage"`
+			AppKubernetesIoManagedBy string `yaml:"app.kubernetes.io/managed-by,omitempty"`
 		} `yaml:"labels"`
 		Annotations `yaml:"annotations,omitempty"`
 	} `yaml:"metadata"`
@@ -135,7 +137,6 @@ type Annotations struct {
 	KubernetesIoTLSAcme                   string `yaml:"kubernetes.io/tls-acme,omitempty"`
 	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
 	NginxIngressKubernetesIoProxyBodySize string `yaml:"nginx.ingress.kubernetes.io/proxy-body-size,omitempty"`
-	AppKubernetesIoManagedBy              string `yaml:"app.kubernetes.io/managed-by,omitempty"`
 	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
 }
 
@@ -213,7 +214,7 @@ func main() {
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
 
-			ingressYaml.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
+			ingressYaml.Metadata.Labels.AppKubernetesIoManagedBy = "Helm"
 			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = ingressYaml.Metadata.Labels.Release
 
 			yamlString, err := yaml.Marshal(&ingressYaml)
