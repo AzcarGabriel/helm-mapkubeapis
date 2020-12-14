@@ -174,7 +174,6 @@ type Annotations struct {
 	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
 	NginxIngressKubernetesIoProxyBodySize string `yaml:"nginx.ingress.kubernetes.io/proxy-body-size,omitempty"`
 	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
-	MetaHelmShReleaseNamespace 		      string `yaml:"meta.helm.sh/release-namespace"`
 }
 
 // UpgradeDescription is description of why release was upgraded
@@ -267,9 +266,8 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
 
-			ingressYaml.Metadata.Labels.AppKubernetesIoManagedBy = "Helm"
-			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = ingressYaml.Metadata.Labels.Release
-			ingressYaml.Metadata.Annotations.MetaHelmShReleaseNamespace = kubeConfig.Context
+			ingressYaml.Metadata.Labels.AppKubernetesIoManagedBy = "" // "Helm"
+			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = "" // ingressYaml.Metadata.Labels.Release
 
 			yamlString, err := yaml.Marshal(&ingressYaml)
 			if err != nil {

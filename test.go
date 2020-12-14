@@ -138,7 +138,6 @@ type Annotations struct {
 	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
 	NginxIngressKubernetesIoProxyBodySize string `yaml:"nginx.ingress.kubernetes.io/proxy-body-size,omitempty"`
 	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
-	MetaHelmShReleaseNamespace 		      string `yaml:"meta.helm.sh/release-namespace"`
 }
 
 func main() {
@@ -215,8 +214,8 @@ func main() {
 				log.Printf("Error parsing YAML file: %s\n", err)
 			}
 
-			ingressYaml.Metadata.Labels.AppKubernetesIoManagedBy = "Helm"
-			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = ingressYaml.Metadata.Labels.Release
+			ingressYaml.Metadata.Labels.AppKubernetesIoManagedBy = "" // "Helm"
+			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = "" // ingressYaml.Metadata.Labels.Release
 
 			yamlString, err := yaml.Marshal(&ingressYaml)
 			if err != nil {
