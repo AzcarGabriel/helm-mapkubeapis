@@ -138,6 +138,7 @@ type Annotations struct {
 	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
 	NginxIngressKubernetesIoProxyBodySize string `yaml:"nginx.ingress.kubernetes.io/proxy-body-size,omitempty"`
 	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
+	MetaHelmShReleaseNamespace 		      string `yaml:"meta.helm.sh/release-namespace"`
 }
 
 func main() {
