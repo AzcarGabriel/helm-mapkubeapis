@@ -53,6 +53,7 @@ type ManifestYaml struct {
 	Metadata   struct {
 		Name   string `yaml:"name"`
 		Labels Labels
+		Annotations `yaml:"annotations,omitempty"`
 	} `yaml:"metadata"`
 	Spec struct {
 		Replicas int `yaml:"replicas"`
@@ -135,6 +136,15 @@ type Labels struct {
 	Release  string `yaml:"release,omitempty"`
 }
 
+type Annotations struct {
+	KubernetesIoTLSAcme                   string `yaml:"kubernetes.io/tls-acme,omitempty"`
+	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
+	NginxIngressKubernetesIoProxyBodySize string `yaml:"nginx.ingress.kubernetes.io/proxy-body-size,omitempty"`
+	AppKubernetesIoManagedBy              string `yaml:"app.kubernetes.io/managed-by,omitempty"`
+	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
+}
+
+
 // UpgradeDescription is description of why release was upgraded
 const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback from this version"
 
@@ -211,14 +221,18 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		}
 
 		if yamlConfig.Kind == "Deployment" {
-			var manifestYaml ManifestYaml
-			err = yaml.Unmarshal([]byte(s), &manifestYaml)
-			if err != nil {
-				log.Printf("Error parsing YAML file: %s\n", err)
-			}
-			manifestYaml.Spec.Selector.MatchLabels = manifestYaml.Spec.Template.Metadata.Labels
+			yamlConfig.Spec.Selector.MatchLabels = yamlConfig.Spec.Template.Metadata.Labels
 
-			yamlString, err := yaml.Marshal(&manifestYaml)
+			yamlString, err := yaml.Marshal(&yamlConfig)
+			if err != nil {
+				log.Fatalf("error: %v", err)
+			}
+			finalManifest += "---\n" + string(yamlString)
+		} else if yamlConfig.Kind == "Ingress" {
+			yamlConfig.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
+			yamlConfig.Metadata.Annotations.MetaHelmShReleaseName = yamlConfig.Metadata.Labels.Release
+
+			yamlString, err := yaml.Marshal(&yamlConfig)
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
