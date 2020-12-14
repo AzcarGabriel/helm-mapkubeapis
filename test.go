@@ -10,13 +10,12 @@ import (
 	"strings"
 )
 
-type ManifestYaml struct {
+type DeploymentYaml struct {
 	APIVersion string `yaml:"apiVersion"`
 	Kind       string `yaml:"kind"`
 	Metadata   struct {
 		Name   string `yaml:"name"`
 		Labels
-		Annotations `yaml:"annotations,omitempty"`
 	} `yaml:"metadata"`
 	Spec struct {
 		Replicas int `yaml:"replicas"`
@@ -99,6 +98,39 @@ type Labels struct {
 	Release  string `yaml:"release,omitempty"`
 }
 
+type IngressYaml struct {
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name   string `yaml:"name"`
+		Labels struct {
+			App      string `yaml:"app"`
+			Chart    string `yaml:"chart"`
+			Release  string `yaml:"release"`
+			Heritage string `yaml:"heritage"`
+		} `yaml:"labels"`
+		Annotations `yaml:"annotations,omitempty"`
+	} `yaml:"metadata"`
+	Spec struct {
+		TLS []struct {
+			Hosts      []string `yaml:"hosts"`
+			SecretName string   `yaml:"secretName"`
+		} `yaml:"tls"`
+		Rules []struct {
+			Host string `yaml:"host"`
+			HTTP struct {
+				Paths []struct {
+					Path    string `yaml:"path"`
+					Backend struct {
+						ServiceName string `yaml:"serviceName"`
+						ServicePort int    `yaml:"servicePort"`
+					} `yaml:"backend"`
+				} `yaml:"paths"`
+			} `yaml:"http"`
+		} `yaml:"rules"`
+	} `yaml:"spec"`
+}
+
 type Annotations struct {
 	KubernetesIoTLSAcme                   string `yaml:"kubernetes.io/tls-acme,omitempty"`
 	KubernetesIoIngressClass              string `yaml:"kubernetes.io/ingress.class,omitempty"`
@@ -160,25 +192,31 @@ func main() {
 		if !strings.Contains(s, "apiVersion") {
 			continue
 		}
-		var yamlConfig ManifestYaml
-		err := yaml.Unmarshal([]byte(s), &yamlConfig)
+		var deploymentYaml DeploymentYaml
+		err := yaml.Unmarshal([]byte(s), &deploymentYaml)
 		if err != nil {
 			log.Printf("Error parsing YAML file: %s\n", err)
 		}
 
-		if yamlConfig.Kind == "Deployment" {
-			yamlConfig.Spec.Selector.MatchLabels = yamlConfig.Spec.Template.Metadata.Labels
+		if deploymentYaml.Kind == "Deployment" {
+			deploymentYaml.Spec.Selector.MatchLabels = deploymentYaml.Spec.Template.Metadata.Labels
 
-			yamlString, err := yaml.Marshal(&yamlConfig)
+			yamlString, err := yaml.Marshal(&deploymentYaml)
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
 			finalManifest += "---\n" + string(yamlString)
-		} else if yamlConfig.Kind == "Ingress" {
-			yamlConfig.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
-			yamlConfig.Metadata.Annotations.MetaHelmShReleaseName = yamlConfig.Metadata.Labels.Release
+		} else if deploymentYaml.Kind == "Ingress" {
+			var ingressYaml IngressYaml
+			err := yaml.Unmarshal([]byte(s), &ingressYaml)
+			if err != nil {
+				log.Printf("Error parsing YAML file: %s\n", err)
+			}
 
-			yamlString, err := yaml.Marshal(&yamlConfig)
+			ingressYaml.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
+			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = ingressYaml.Metadata.Labels.Release
+
+			yamlString, err := yaml.Marshal(&ingressYaml)
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}

@@ -128,12 +128,125 @@ type ManifestYaml struct {
 	} `yaml:"spec"`
 }
 
+type DeploymentYaml struct {
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name   string `yaml:"name"`
+		Labels
+	} `yaml:"metadata"`
+	Spec struct {
+		Replicas int `yaml:"replicas"`
+		Selector struct {
+			MatchLabels Labels `yaml:"matchLabels"`
+		} `yaml:"selector"`
+		Template struct {
+			Metadata struct {
+				Labels
+			} `yaml:"metadata"`
+			Spec struct {
+				ImagePullSecrets []struct {
+					Name string `yaml:"name"`
+				} `yaml:"imagePullSecrets"`
+				Containers []struct {
+					Name            string `yaml:"name"`
+					Image           string `yaml:"image"`
+					ImagePullPolicy string `yaml:"imagePullPolicy"`
+					Env             []struct {
+						Name      string      `yaml:"name"`
+						Value     interface{} `yaml:"value,omitempty"`
+						ValueFrom struct {
+							ConfigMapKeyRef struct {
+								Name string `yaml:"name"`
+								Key  string `yaml:"key"`
+							} `yaml:"configMapKeyRef"`
+						} `yaml:"valueFrom,omitempty"`
+					} `yaml:"env"`
+					Ports []struct {
+						Name          string `yaml:"name"`
+						ContainerPort int    `yaml:"containerPort"`
+					} `yaml:"ports"`
+					LivenessProbe struct {
+						HTTPGet struct {
+							Path string `yaml:"path"`
+							Port int    `yaml:"port"`
+						} `yaml:"httpGet"`
+						InitialDelaySeconds int `yaml:"initialDelaySeconds"`
+						TimeoutSeconds      int `yaml:"timeoutSeconds"`
+					} `yaml:"livenessProbe"`
+					ReadinessProbe struct {
+						HTTPGet struct {
+							Path string `yaml:"path"`
+							Port int    `yaml:"port"`
+						} `yaml:"httpGet"`
+						InitialDelaySeconds int `yaml:"initialDelaySeconds"`
+						TimeoutSeconds      int `yaml:"timeoutSeconds"`
+					} `yaml:"readinessProbe"`
+					VolumeMounts []struct {
+						Name      string `yaml:"name"`
+						MountPath string `yaml:"mountPath"`
+						ReadOnly  bool   `yaml:"readOnly"`
+					} `yaml:"volumeMounts"`
+					Resources struct {
+						Requests struct {
+							CPU    string `yaml:"cpu"`
+							Memory string `yaml:"memory"`
+						} `yaml:"requests"`
+					} `yaml:"resources"`
+				} `yaml:"containers"`
+				Volumes []struct {
+					Name   string `yaml:"name"`
+					Secret struct {
+						SecretName string `yaml:"secretName"`
+					} `yaml:"secret,omitempty"`
+					ConfigMap struct {
+						Name string `yaml:"name"`
+					} `yaml:"configMap,omitempty"`
+				} `yaml:"volumes"`
+			} `yaml:"spec"`
+		} `yaml:"template"`
+	} `yaml:"spec"`
+}
+
 type Labels struct {
 	App      string `yaml:"app,omitempty"`
 	Track    string `yaml:"track,omitempty"`
 	Tier     string `yaml:"tier,omitempty"`
 	Chart    string `yaml:"chart,omitempty"`
 	Release  string `yaml:"release,omitempty"`
+}
+
+type IngressYaml struct {
+	APIVersion string `yaml:"apiVersion"`
+	Kind       string `yaml:"kind"`
+	Metadata   struct {
+		Name   string `yaml:"name"`
+		Labels struct {
+			App      string `yaml:"app"`
+			Chart    string `yaml:"chart"`
+			Release  string `yaml:"release"`
+			Heritage string `yaml:"heritage"`
+		} `yaml:"labels"`
+		Annotations `yaml:"annotations,omitempty"`
+	} `yaml:"metadata"`
+	Spec struct {
+		TLS []struct {
+			Hosts      []string `yaml:"hosts"`
+			SecretName string   `yaml:"secretName"`
+		} `yaml:"tls"`
+		Rules []struct {
+			Host string `yaml:"host"`
+			HTTP struct {
+				Paths []struct {
+					Path    string `yaml:"path"`
+					Backend struct {
+						ServiceName string `yaml:"serviceName"`
+						ServicePort int    `yaml:"servicePort"`
+					} `yaml:"backend"`
+				} `yaml:"paths"`
+			} `yaml:"http"`
+		} `yaml:"rules"`
+	} `yaml:"spec"`
 }
 
 type Annotations struct {
@@ -143,7 +256,6 @@ type Annotations struct {
 	AppKubernetesIoManagedBy              string `yaml:"app.kubernetes.io/managed-by,omitempty"`
 	MetaHelmShReleaseName                 string `yaml:"meta.helm.sh/release-name,omitempty"`
 }
-
 
 // UpgradeDescription is description of why release was upgraded
 const UpgradeDescription = "Kubernetes deprecated API upgrade - DO NOT rollback from this version"
@@ -214,25 +326,31 @@ func ReplaceManifestUnSupportedAPIs(origManifest, mapFile string, kubeConfig Kub
 		if !strings.Contains(s, "apiVersion") {
 			continue
 		}
-		var yamlConfig ManifestYaml
-		err := yaml.Unmarshal([]byte(s), &yamlConfig)
+		var deploymentYaml DeploymentYaml
+		err := yaml.Unmarshal([]byte(s), &deploymentYaml)
 		if err != nil {
 			log.Printf("Error parsing YAML file: %s\n", err)
 		}
 
-		if yamlConfig.Kind == "Deployment" {
-			yamlConfig.Spec.Selector.MatchLabels = yamlConfig.Spec.Template.Metadata.Labels
+		if deploymentYaml.Kind == "Deployment" {
+			deploymentYaml.Spec.Selector.MatchLabels = deploymentYaml.Spec.Template.Metadata.Labels
 
-			yamlString, err := yaml.Marshal(&yamlConfig)
+			yamlString, err := yaml.Marshal(&deploymentYaml)
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
 			finalManifest += "---\n" + string(yamlString)
-		} else if yamlConfig.Kind == "Ingress" {
-			yamlConfig.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
-			yamlConfig.Metadata.Annotations.MetaHelmShReleaseName = yamlConfig.Metadata.Labels.Release
+		} else if deploymentYaml.Kind == "Ingress" {
+			var ingressYaml IngressYaml
+			err := yaml.Unmarshal([]byte(s), &ingressYaml)
+			if err != nil {
+				log.Printf("Error parsing YAML file: %s\n", err)
+			}
 
-			yamlString, err := yaml.Marshal(&yamlConfig)
+			ingressYaml.Metadata.Annotations.AppKubernetesIoManagedBy = "Helm"
+			ingressYaml.Metadata.Annotations.MetaHelmShReleaseName = ingressYaml.Metadata.Labels.Release
+
+			yamlString, err := yaml.Marshal(&ingressYaml)
 			if err != nil {
 				log.Fatalf("error: %v", err)
 			}
